@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VisaGuard — AI Visa Risk Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:#F0F6FF;color:#0B1F3A;min-height:100vh}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fade-up{animation:fadeUp .4s ease both}
+
+/* Layout */
+.container{max-width:700px;margin:0 auto;padding:0 16px 60px}
+
+/* Nav */
+nav{background:linear-gradient(135deg,#0B1F3A 0%,#1A3A6B 100%);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.nav-logo{display:flex;align-items:center;gap:10px;color:#fff;font-size:18px;font-weight:800;letter-spacing:-.4px}
+.nav-icon{width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.nav-badge{background:#DC2626;color:#fff;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:.06em}
+
+/* API Key Banner */
+#api-banner{background:#fff;border:1.5px solid #FCA5A5;border-radius:12px;padding:14px 16px;margin:16px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+#api-banner.hidden{display:none}
+#api-banner.ok{border-color:#6EE7B7;background:#ECFDF5}
+.api-input{flex:1;min-width:220px;padding:8px 12px;border:1.5px solid #E2E8F0;border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#F8FAFF}
+.api-input:focus{border-color:#3B82F6}
+.api-save-btn{padding:8px 16px;background:#0B1F3A;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
+.api-save-btn:hover{opacity:.88}
+
+/* Cards */
+.card{background:#fff;border-radius:16px;padding:20px;margin-bottom:14px;box-shadow:0 1px 3px rgba(15,23,42,.08),0 0 0 1px rgba(15,23,42,.05)}
+.card-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:12px}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,#0B1F3A 0%,#1A3A6B 100%);border-radius:20px;padding:28px 24px;margin-bottom:14px;color:#fff;text-align:center}
+.hero-tag{font-size:10px;color:#64748B;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px}
+.hero h1{font-size:26px;font-weight:800;line-height:1.25;margin-bottom:12px;letter-spacing:-.5px}
+.hero-sub{font-size:13px;color:#94A3B8;line-height:1.7;max-width:380px;margin:0 auto 20px}
+.hero-stats{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+.hero-stat{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#CBD5E1;font-size:11px;font-weight:500;padding:5px 12px;border-radius:20px}
+
+/* Country grid */
+.country-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.country-btn{background:#F8FAFF;border:1.5px solid #E2E8F0;border-radius:12px;padding:12px 8px;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit;width:100%}
+.country-btn:hover{border-color:#93C5FD;transform:translateY(-1px)}
+.country-btn.active{background:#EFF6FF;border-color:#3B82F6}
+.country-btn .flag{font-size:22px;margin-bottom:5px}
+.country-btn .cname{font-size:11px;font-weight:700;color:#374151}
+.country-btn.active .cname{color:#1D4ED8}
+.country-btn .cfee{font-size:10px;color:#94A3B8;margin-top:2px}
+
+/* Visa pills */
+.vtype-pills{display:flex;gap:8px;flex-wrap:wrap}
+.vtype-btn{padding:8px 18px;background:transparent;border:1.5px solid #E2E8F0;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.vtype-btn:hover{background:#F8FAFF}
+.vtype-btn.active{background:#0B1F3A;color:#fff;border-color:#0B1F3A}
+
+/* Example buttons */
+.ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ex-btn{padding:11px 12px;background:#F8FAFF;border:1.5px solid #E2E8F0;border-radius:12px;font-size:12px;font-weight:600;color:#374151;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s;line-height:1.4}
+.ex-btn:hover{border-color:#93C5FD;transform:translateY(-1px)}
+.ex-sub{font-size:10px;color:#94A3B8;font-weight:400;margin-top:3px}
+
+/* Textarea */
+textarea{width:100%;border:1.5px solid #E2E8F0;border-radius:12px;padding:13px;font-size:13px;line-height:1.75;color:#0B1F3A;background:#F8FAFF;resize:vertical;font-family:inherit;transition:border-color .2s,box-shadow .2s;outline:none}
+textarea:focus{border-color:#3B82F6;box-shadow:0 0 0 3px rgba(59,130,246,.12)}
+.field-hint{font-size:11px;color:#94A3B8;margin-top:7px}
+
+/* Error */
+.err-box{background:#FFF1F2;border:1px solid #FCA5A5;border-radius:10px;padding:11px 14px;font-size:13px;color:#7F1D1D;font-weight:500;margin-bottom:12px;display:none;word-break:break-word;line-height:1.5}
+
+/* Analyze button */
+.analyze-btn{width:100%;padding:16px;background:linear-gradient(135deg,#0B1F3A 0%,#1A3A6B 100%);color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit;box-shadow:0 4px 20px rgba(11,31,58,.28);transition:all .2s;letter-spacing:-.2px}
+.analyze-btn:hover{opacity:.9;transform:translateY(-1px)}
+.analyze-btn:active{transform:scale(.99)}
+.analyze-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.disclaimer{text-align:center;font-size:11px;color:#CBD5E1;margin-top:14px;line-height:1.8}
+
+/* Loading */
+#screen-loading{display:none;text-align:center;padding:5rem 1rem}
+.spinner{width:48px;height:48px;border:3px solid #BFDBFE;border-top-color:#3B82F6;border-radius:50%;animation:spin .85s linear infinite;margin:0 auto 22px}
+.load-title{font-size:20px;font-weight:700;color:#0B1F3A;margin-bottom:8px}
+.load-msg{font-size:14px;color:#64748B;margin-bottom:5px}
+.load-hint{font-size:12px;color:#CBD5E1}
+
+/* Results */
+#screen-results{display:none}
+.result-header{display:flex;justify-content:space-between;align-items:center;padding:16px 0 12px}
+.back-btn{padding:6px 14px;background:transparent;border:1.5px solid #E2E8F0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;color:#64748B;font-family:inherit;transition:all .15s}
+.back-btn:hover{background:#F8FAFF;color:#0B1F3A}
+
+/* Metric cards */
+.metric-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.metric-card{background:linear-gradient(135deg,#0B1F3A,#1A3A6B);border-radius:14px;padding:14px 12px;text-align:center}
+.metric-val{font-size:22px;font-weight:800;color:#fff;line-height:1;margin-bottom:5px}
+.metric-label{font-size:10px;color:#64748B;line-height:1.3}
+
+/* Risk banner */
+.risk-banner{border-radius:16px;padding:18px 20px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:16px;border-left:5px solid}
+.risk-LOW{background:#ECFDF5;border-color:#10B981}
+.risk-MEDIUM{background:#FFFBEB;border-color:#F59E0B}
+.risk-HIGH,.risk-CRITICAL{background:#FFF1F2;border-color:#EF4444}
+.risk-badge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;letter-spacing:.08em;display:inline-block;margin-bottom:8px}
+.rbg-LOW{background:#10B981;color:#fff}
+.rbg-MEDIUM{background:#F59E0B;color:#fff}
+.rbg-HIGH,.rbg-CRITICAL{background:#EF4444;color:#fff}
+.risk-verdict{font-size:14px;font-weight:500;line-height:1.6}
+.risk-verdict.LOW{color:#065F46}
+.risk-verdict.MEDIUM{color:#78350F}
+.risk-verdict.HIGH,.risk-verdict.CRITICAL{color:#7F1D1D}
+.risk-pct{font-size:44px;font-weight:800;line-height:1}
+.risk-pct-label{font-size:9px;color:#94A3B8;margin-top:2px;font-weight:700;letter-spacing:.07em}
+
+/* Composite bar */
+.composite-row{background:#F8FAFF;border-radius:10px;padding:12px 15px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.bar-track{width:100px;height:7px;background:#E2E8F0;border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;transition:width 1s ease}
+
+/* Score grid */
+.score-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.score-card{background:#F8FAFF;border-radius:14px;padding:15px 13px;display:flex;flex-direction:column;align-items:center;gap:9px}
+.ring-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.ring-num{position:absolute;font-size:16px;font-weight:800;line-height:1}
+.score-name{font-size:12px;font-weight:700;color:#0B1F3A;margin-bottom:5px;text-align:center}
+.score-rat{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+.rat-STRONG{background:#ECFDF5;color:#065F46}
+.rat-MODERATE{background:#FFFBEB;color:#78350F}
+.rat-WEAK{background:#FFF1F2;color:#7F1D1D}
+.score-note{font-size:11px;color:#64748B;text-align:center;line-height:1.5}
+.score-improve{font-size:11px;color:#2563EB;text-align:center;line-height:1.5;border-top:1px solid #E2E8F0;padding-top:8px;width:100%}
+
+/* Flags */
+.flag-item{border-left:4px solid;border-radius:0 10px 10px 0;padding:10px 13px;background:#F8FAFF;margin-bottom:8px}
+.flag-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;gap:8px}
+.flag-issue{font-size:13px;font-weight:700;color:#0B1F3A;flex:1;line-height:1.4}
+.sev-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0}
+.sev-HIGH{background:#FFF1F2;color:#7F1D1D}
+.sev-MEDIUM{background:#FFFBEB;color:#78350F}
+.sev-LOW{background:#ECFDF5;color:#065F46}
+.flag-fix{font-size:12px;color:#059669;line-height:1.5}
+
+/* Two col */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+
+/* Doc tabs */
+.doc-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:13px}
+.doc-tab-btn{padding:7px 12px;border-radius:8px;border:1.5px solid #E2E8F0;background:transparent;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;color:#64748B;display:flex;align-items:center;gap:5px}
+.doc-tab-btn:hover{background:#F8FAFF}
+.doc-tab-btn.active{background:#EFF6FF;border-color:#3B82F6;color:#1D4ED8}
+.doc-content-area{background:#F8FAFF;border:1px solid #E2E8F0;border-radius:12px;padding:16px;min-height:150px}
+.doc-text{font-size:13px;line-height:1.85;color:#0B1F3A;white-space:pre-wrap}
+.doc-center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:130px;gap:12px;text-align:center}
+.doc-actions{display:flex;gap:8px;margin-top:10px}
+.copy-btn{padding:9px 18px;background:#0B1F3A;color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;gap:6px}
+.copy-btn:hover{opacity:.88}
+.copy-btn.copied{background:#10B981}
+.regen-btn{padding:9px 13px;background:transparent;color:#64748B;border:1.5px solid #E2E8F0;border-radius:9px;font-size:12px;cursor:pointer;font-family:inherit;transition:all .15s}
+.regen-btn:hover{background:#F8FAFF}
+.gen-btn{padding:9px 20px;background:#0B1F3A;color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.gen-btn:hover{opacity:.88}
+
+/* Mini spinner */
+.mini-spin{display:inline-block;width:10px;height:10px;border:1.5px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+
+/* Embassy */
+.tip-row{display:flex;gap:8px;margin-bottom:7px;font-size:13px;color:#374151;align-items:flex-start;line-height:1.5}
+.tip-arrow{color:#3B82F6;flex-shrink:0;margin-top:2px;font-weight:700}
+.tip-x{color:#EF4444;flex-shrink:0;margin-top:2px;font-weight:700}
+
+/* Good/missing */
+.good-item{display:flex;gap:7px;margin-bottom:8px;font-size:12px;color:#065F46;align-items:flex-start;line-height:1.5}
+.miss-item{margin-bottom:10px}
+.miss-row{display:flex;gap:6px;align-items:flex-start}
+.miss-icon{flex-shrink:0;margin-top:1px;font-weight:700;font-size:13px}
+
+.section-end-btn{width:100%;padding:13px;background:transparent;color:#94A3B8;border:1.5px solid #E2E8F0;border-radius:14px;font-size:14px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s;margin-top:4px}
+.section-end-btn:hover{background:#F8FAFF;color:#0B1F3A}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <div class="nav-icon">✈️</div>
+    VisaGuard
+    <span style="font-size:12px;font-weight:400;color:#64748B;margin-left:4px">AI Visa Risk Intelligence</span>
+  </div>
+  <span class="nav-badge">FREE</span>
+</nav>
+
+<!-- API Key Banner -->
+<div class="container">
+<div id="api-banner">
+  <div style="flex:1;min-width:200px">
+    <div style="font-size:13px;font-weight:700;color:#7F1D1D;margin-bottom:4px" id="api-banner-title">⚠ Enter your Anthropic API key to use VisaGuard</div>
+    <div style="font-size:12px;color:#94A3B8">Get a free key at <a href="https://console.anthropic.com" target="_blank" style="color:#3B82F6">console.anthropic.com</a> → API Keys</div>
+  </div>
+  <input class="api-input" type="password" id="api-key-input" placeholder="sk-ant-..." />
+  <button class="api-save-btn" onclick="saveKey()">Save Key</button>
+</div>
+
+<!-- INPUT SCREEN -->
+<div id="screen-input">
+  <div class="hero">
+    <div class="hero-tag">Before you spend your visa fee</div>
+    <h1>Know Your Rejection Risk<br>Before You Apply</h1>
+    <div class="hero-sub">Paste your details. Get a full risk score, confidence breakdown, red flags, and ready-to-submit documents — in seconds.</div>
+    <div class="hero-stats">
+      <span class="hero-stat">40% avg US rejection rate</span>
+      <span class="hero-stat">₹12K+ non-refundable fees</span>
+      <span class="hero-stat">Results in ~15 seconds</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Load a sample profile</div>
+    <div class="ex-grid" id="ex-grid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Destination country</div>
+    <div class="country-grid" id="country-grid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Visa type</div>
+    <div class="vtype-pills" id="vtype-pills"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Your application details</div>
+    <textarea id="details" rows="6" placeholder="Include:&#10;• Employment status and monthly salary&#10;• Bank balance and savings&#10;• Previous international travel history&#10;• Purpose and dates of travel&#10;• Property, family, and home country ties"></textarea>
+    <div class="field-hint">More detail = more accurate analysis</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Documents you have — optional, improves accuracy</div>
+    <textarea id="docs" rows="3" placeholder="Bank statements, employment letter, property papers, ITR, previous visa stamps, invitation letters, travel insurance..."></textarea>
+  </div>
+
+  <div class="err-box" id="err-box"></div>
+
+  <button class="analyze-btn" id="analyze-btn" onclick="analyze()">
+    ✦ Check My Application Risk →
+  </button>
+  <div class="disclaimer">Not legal advice · For informational purposes only<br>Always consult a licensed immigration professional</div>
+</div>
+
+<!-- LOADING SCREEN -->
+<div id="screen-loading">
+  <div class="spinner"></div>
+  <div class="load-title">Analyzing Your Application</div>
+  <div class="load-msg" id="load-msg">Reading your details...</div>
+  <div class="load-hint">Usually 10 – 20 seconds</div>
+</div>
+
+<!-- RESULTS SCREEN -->
+<div id="screen-results"></div>
+</div>
+
+<script>
+const COUNTRIES=[
+  {code:'US',name:'United States',flag:'🇺🇸',fee:17000},
+  {code:'UK',name:'United Kingdom',flag:'🇬🇧',fee:12000},
+  {code:'SCH',name:'Schengen',flag:'🇪🇺',fee:7500},
+  {code:'CA',name:'Canada',flag:'🇨🇦',fee:15000},
+  {code:'AU',name:'Australia',flag:'🇦🇺',fee:10000},
+  {code:'AE',name:'Dubai / UAE',flag:'🇦🇪',fee:3000},
+];
+const VTYPES=['Tourist','Business','Student','Work','Medical'];
+const EXAMPLES=[
+  {label:'🔴 High Risk',sub:'USA Tourist',country:'US',vtype:'Tourist',
+   details:'First-time traveler. Age 24, unmarried. Junior software developer, employed 8 months. Salary Rs 35000 per month. Bank balance Rs 80000. No property or assets. Zero international travel history. Planning 10-day tourist trip to New York to visit a friend. No formal invitation letter. Parents are farmers with very low income.',
+   docs:'Bank statement showing Rs 80000 with some irregular credits. 2-month salary slips. Basic employment letter. No income tax returns filed. No property papers.'},
+  {label:'🟡 Medium Risk',sub:'Schengen Tourist',country:'SCH',vtype:'Tourist',
+   details:'Age 31, married with one child. IT professional with 6 years experience. Monthly salary Rs 85000. Bank balance Rs 3,50,000. Previous international travel: Dubai in 2019, Thailand in 2021. Joint flat ownership with spouse. Applying for 15-day Schengen tourist visa to France and Italy. Hotel bookings and itinerary confirmed.',
+   docs:'6-month bank statement showing stable salary credits. Employment letter with leave approval. Property documents for flat. ITR for last 2 years showing income of Rs 10,20,000. Travel insurance purchased. Hotel bookings confirmed. Previous visa stamps available.'},
+  {label:'🟢 Strong Profile',sub:'UK Business',country:'UK',vtype:'Business',
+   details:'Age 42, married with two children. Digital marketing agency owner for 8 years. Annual business turnover Rs 1.2 crore. Personal bank balance Rs 18 lakhs. Business account balance Rs 45 lakhs. Previous travel: UK in 2018 and 2020, Singapore in 2019, USA in 2022. Own house and car. Formal invitation letter from London client for business meetings.',
+   docs:'12-month personal and business bank statements. Business registration and audited financials. ITR for last 3 years. Property ownership documents. Formal invitation letter on UK company letterhead. Previous visa stamps including UK twice. Confirmed return flights and travel insurance.'},
+  {label:'🎓 Student Visa',sub:'Canada Student',country:'CA',vtype:'Student',
+   details:'Age 22, unmarried. Received admission to University of Toronto for Masters in Computer Science starting September 2025. No personal income, parents are sponsoring. Father is a government employee earning Rs 1,20,000 per month. Family bank balance Rs 25 lakhs. No previous international travel. IELTS score 7.5, GRE score 320. Strong academic record throughout.',
+   docs:'University of Toronto admission letter. IELTS and GRE scorecards. Father salary slips and Form 16. Family bank statement for 12 months showing Rs 25 lakhs. Fathers employment certificate. Affidavit of financial support. Academic transcripts and certificates.'},
+];
+const SCORE_KEYS=[
+  ['financial_strength','Financial Strength'],
+  ['travel_credibility','Travel Credibility'],
+  ['documentation_completeness','Documentation'],
+  ['employment_stability','Employment'],
+  ['ties_to_home_country','Home Country Ties'],
+];
+const DOC_TABS=[
+  {key:'cover_letter',label:'Cover Letter'},
+  {key:'financial_narrative',label:'Financial Narrative'},
+  {key:'travel_itinerary',label:'Travel Itinerary'},
+  {key:'home_ties_letter',label:'Home Ties Letter'},
+];
+const DOC_INSTR={
+  cover_letter:'Write a formal visa cover letter. 3 paragraphs: (1) introduce the applicant and visa purpose, (2) explain travel dates, itinerary, and financial capability with specific amounts, (3) confirm strong intention to return home. Address to the Embassy Visa Section with date, subject line, and professional sign-off.',
+  financial_narrative:'Write a financial statement for this visa application. 2-3 paragraphs explaining income source, monthly earnings, total savings, and ability to fully fund the trip without financial hardship. Include specific rupee amounts mentioned in the applicant details.',
+  travel_itinerary:'Write a day-by-day travel itinerary for this visa application. Start from Day 1 arrival and go to the final day departure. Include city, accommodation type, and 2-3 planned activities per day. Be realistic and specific for a visa officer.',
+  home_ties_letter:'Write a formal letter demonstrating strong ties to the home country and clear intention to return. Cover: employment or business commitment, close family dependents, property or financial assets, and a firm statement of intention to return. 2-3 paragraphs in professional letter format.',
+};
+const LOAD_MSGS=[
+  'Reading your application...',
+  'Analyzing financial strength...',
+  'Checking travel credibility...',
+  'Reviewing documentation...',
+  'Consulting embassy data...',
+  'Building your risk report...',
+];
+
+const S={country:null,vtype:'Tourist',frozenCtx:'',result:null,docCache:{},inFlight:new Set(),docTab:0};
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function scColor(v){return v>=70?'#10B981':v>=40?'#F59E0B':'#EF4444'}
+
+function ring(pct){
+  const sz=72,st=6,r=(sz-st)/2,C=2*Math.PI*r;
+  const off=C-(Math.min(100,Math.max(0,pct))/100)*C;
+  const col=scColor(pct);
+  return `<svg width="${sz}" height="${sz}" style="transform:rotate(-90deg);display:block;flex-shrink:0">
+    <circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="#E2E8F0" stroke-width="${st}"/>
+    <circle cx="${sz/2}" cy="${sz/2}" r="${r}" fill="none" stroke="${col}" stroke-width="${st}"
+      stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" stroke-linecap="round"
+      style="transition:stroke-dashoffset 1s ease"/>
+  </svg>`;
+}
+
+function safeJSON(raw){
+  const s=raw.replace(/```json|```/gi,'').trim();
+  try{return JSON.parse(s)}catch(_){}
+  const a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a>-1&&b>a){try{return JSON.parse(s.slice(a,b+1))}catch(_){}}
+  throw new Error('Could not parse JSON. Response was: '+s.slice(0,300));
+}
+
+function getKey(){
+  const stored=localStorage.getItem('vg_api_key')||'';
+  const input=document.getElementById('api-key-input').value.trim();
+  return input||stored;
+}
+
+function saveKey(){
+  const k=document.getElementById('api-key-input').value.trim();
+  if(!k){showErr('Please enter your API key.');return}
+  localStorage.setItem('vg_api_key',k);
+  const b=document.getElementById('api-banner');
+  b.className='card ok';
+  document.getElementById('api-banner-title').style.color='#065F46';
+  document.getElementById('api-banner-title').textContent='✓ API key saved — you are ready to analyze!';
+  hideErr();
+}
+
+async function callAPI(userContent){
+  const key=getKey();
+  if(!key) throw new Error('No API key. Please enter your Anthropic API key at the top of the page.');
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:1000,
+      messages:[{role:'user',content:userContent}]
+    })
+  });
+  const raw=await res.text();
+  let data;
+  try{data=JSON.parse(raw)}catch(e){throw new Error('Server returned invalid response (status '+res.status+')')}
+  if(!res.ok) throw new Error(data.error?.message||'API error '+res.status);
+  const text=(data.content||[]).map(b=>b.text||'').join('').trim();
+  if(!text) throw new Error('Empty response from API');
+  return text;
+}
+
+function showErr(msg){const b=document.getElementById('err-box');b.textContent='⚠ '+msg;b.style.display='block'}
+function hideErr(){document.getElementById('err-box').style.display='none'}
+
+function showScreen(name){
+  document.getElementById('screen-input').style.display=name==='input'?'block':'none';
+  document.getElementById('screen-loading').style.display=name==='loading'?'block':'none';
+  document.getElementById('screen-results').style.display=name==='results'?'block':'none';
+}
+
+let loadIv;
+function startLoad(){
+  let i=0;
+  document.getElementById('load-msg').textContent=LOAD_MSGS[0];
+  loadIv=setInterval(()=>{i=(i+1)%LOAD_MSGS.length;document.getElementById('load-msg').textContent=LOAD_MSGS[i]},1800);
+}
+function stopLoad(){clearInterval(loadIv)}
+
+async function analyze(){
+  const det=document.getElementById('details').value.trim();
+  const docs=document.getElementById('docs').value.trim();
+  hideErr();
+  if(!getKey()){showErr('Please enter and save your Anthropic API key at the top of the page.');return}
+  if(!S.country){showErr('Please select a destination country.');return}
+  if(det.length<50){showErr('Please add more detail about your situation (at least a few sentences).');return}
+  S.frozenCtx='Destination: '+S.country.name+'\nVisa type: '+S.vtype+'\n\nApplicant details:\n'+det+'\n\nDocuments:\n'+(docs||'Not specified');
+  S.result=null;S.docCache={};S.inFlight=new Set();S.docTab=0;
+  showScreen('loading');startLoad();
+  document.getElementById('analyze-btn').disabled=true;
+
+  const PROMPT=`You are a senior visa consultant. Analyze this visa application honestly. Reply with ONLY a valid JSON object — no markdown, no explanation, just raw JSON.
+
+[APPLICATION]
+${S.frozenCtx}
+
+[JSON SCHEMA — all fields required, keep string values under 12 words]
+{"overall_risk":"LOW|MEDIUM|HIGH|CRITICAL","rejection_probability":<integer 0-100>,"verdict":"<one honest sentence>","composite_score":<integer 0-100>,"confidence_scores":{"financial_strength":{"score":<0-100>,"rating":"WEAK|MODERATE|STRONG","reasoning":"<12 words max>","improve":"<12 words max>"},"travel_credibility":{"score":<0-100>,"rating":"WEAK|MODERATE|STRONG","reasoning":"<12 words max>","improve":"<12 words max>"},"documentation_completeness":{"score":<0-100>,"rating":"WEAK|MODERATE|STRONG","reasoning":"<12 words max>","improve":"<12 words max>"},"employment_stability":{"score":<0-100>,"rating":"WEAK|MODERATE|STRONG","reasoning":"<12 words max>","improve":"<12 words max>"},"ties_to_home_country":{"score":<0-100>,"rating":"WEAK|MODERATE|STRONG","reasoning":"<12 words max>","improve":"<12 words max>"}},"red_flags":[{"issue":"<10 words>","severity":"HIGH|MEDIUM|LOW","fix":"<10 words>"}],"missing_documents":[{"document":"<name>","priority":"MANDATORY|SUPPORTING","why":"<8 words>"}],"positive_factors":["<10 words>"],"embassy_tips":["<10 words>"],"deal_breakers":["<10 words>"]}
+
+Max items: 4 red_flags, 3 missing_documents, 3 positive_factors, 3 embassy_tips, 2 deal_breakers. Output raw JSON only.`;
+
+  try{
+    const raw=await callAPI(PROMPT);
+    stopLoad();
+    S.result=safeJSON(raw);
+    renderResults();
+    showScreen('results');
+    window.scrollTo(0,0);
+    genDoc(0);
+  }catch(e){
+    stopLoad();
+    document.getElementById('analyze-btn').disabled=false;
+    showScreen('input');
+    showErr('Analysis failed: '+e.message);
+  }
+}
+
+async function genDoc(tabIndex){
+  const tab=DOC_TABS[tabIndex];
+  if(!tab) return;
+  S.docTab=tabIndex;
+  refreshDocUI();
+  if(S.docCache[tab.key]||S.inFlight.has(tab.key)) return;
+  S.inFlight.add(tab.key);
+  refreshDocUI();
+  const PROMPT=`You are a professional visa consultant. Write a ${tab.label} for the following visa applicant. Output ONLY the document text — no introduction, no heading, no markdown, no explanation whatsoever.
+
+[APPLICANT]
+${S.frozenCtx}
+
+[INSTRUCTIONS]
+${DOC_INSTR[tab.key]}`;
+  try{
+    const raw=await callAPI(PROMPT);
+    S.docCache[tab.key]=raw.replace(/^```[\w]*\n?/gm,'').replace(/```$/gm,'').trim();
+  }catch(e){
+    S.docCache[tab.key]='__ERR__'+e.message;
+  }
+  S.inFlight.delete(tab.key);
+  if(S.docTab===tabIndex) refreshDocUI();
+}
+
+function refreshDocUI(){
+  const tab=DOC_TABS[S.docTab];
+  if(!tab) return;
+  DOC_TABS.forEach((t,i)=>{
+    const btn=document.getElementById('dtab-'+i);
+    if(!btn) return;
+    const done=S.docCache[t.key]&&!S.docCache[t.key].startsWith('__ERR__');
+    const busy=S.inFlight.has(t.key);
+    btn.className='doc-tab-btn'+(i===S.docTab?' active':'');
+    btn.innerHTML=t.label+(busy?' <span class="mini-spin"></span>':done?' ✓':'');
+  });
+  const area=document.getElementById('doc-content-area');
+  if(!area) return;
+  const val=S.docCache[tab.key];
+  const busy=S.inFlight.has(tab.key);
+  if(busy){
+    area.innerHTML=`<div class="doc-center"><div style="width:28px;height:28px;border:2.5px solid #BFDBFE;border-top-color:#3B82F6;border-radius:50%;animation:spin .8s linear infinite"></div><div style="font-size:13px;color:#64748B">Writing your ${esc(tab.label)}...</div><div style="font-size:11px;color:#CBD5E1">Usually 10 – 15 seconds</div></div>`;
+  }else if(!val){
+    area.innerHTML=`<div class="doc-center"><div style="font-size:13px;color:#94A3B8">Click to generate your ${esc(tab.label)}</div><button class="gen-btn" onclick="genDoc(${S.docTab})">Generate ${esc(tab.label)}</button></div>`;
+  }else if(val.startsWith('__ERR__')){
+    area.innerHTML=`<div class="doc-center"><div style="font-size:13px;color:#7F1D1D;font-weight:600">Generation failed</div><div style="font-size:12px;color:#94A3B8;max-width:340px;line-height:1.5">${esc(val.replace('__ERR__',''))}</div><button class="gen-btn" onclick="retryDoc()">↺ Retry</button></div>`;
+  }else{
+    area.innerHTML=`<div class="doc-text">${esc(val)}</div><div class="doc-actions"><button class="copy-btn" id="copy-doc-btn" onclick="copyDoc()">${esc('⎘ Copy '+tab.label)}</button><button class="regen-btn" onclick="retryDoc()">↺ Regenerate</button></div>`;
+  }
+}
+
+function retryDoc(){
+  const tab=DOC_TABS[S.docTab];
+  if(!tab) return;
+  delete S.docCache[tab.key];
+  S.inFlight.delete(tab.key);
+  genDoc(S.docTab);
+}
+
+function copyDoc(){
+  const tab=DOC_TABS[S.docTab];
+  const txt=S.docCache[tab?.key]||'';
+  if(!txt||txt.startsWith('__ERR__')) return;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn=document.getElementById('copy-doc-btn');
+    if(btn){btn.textContent='✓ Copied!';btn.className='copy-btn copied';setTimeout(()=>{btn.textContent='⎘ Copy '+tab.label;btn.className='copy-btn'},2000)}
+  }).catch(()=>{});
+}
+
+function goBack(){
+  S.result=null;S.docCache={};S.inFlight=new Set();
+  document.getElementById('analyze-btn').disabled=false;
+  showScreen('input');window.scrollTo(0,0);
+}
+
+function renderResults(){
+  const R=S.result;if(!R) return;
+  const rk=R.overall_risk||'MEDIUM';
+  const scores=R.confidence_scores||{};
+  const pct=R.rejection_probability||0;
+  const pctCol=pct>50?'#EF4444':pct>25?'#F59E0B':'#10B981';
+  const comp=Math.round(R.composite_score||0);
+  const fee=(S.country?.fee||0).toLocaleString();
+
+  const scoreCards=SCORE_KEYS.map(([key,label])=>{
+    const v=scores[key]||{score:0,rating:'WEAK',reasoning:'',improve:''};
+    const p=Math.round(v.score||0);
+    return `<div class="score-card">
+      <div class="ring-wrap">${ring(p)}<div class="ring-num" style="color:${scColor(p)}">${p}%</div></div>
+      <div style="text-align:center;width:100%">
+        <div class="score-name">${esc(label)}</div>
+        <span class="score-rat rat-${v.rating||'WEAK'}">${esc(v.rating||'—')}</span>
+      </div>
+      <div class="score-note">${esc(v.reasoning)}</div>
+      ${v.rating!=='STRONG'&&v.improve?`<div class="score-improve">↗ ${esc(v.improve)}</div>`:''}
+    </div>`;
+  }).join('');
+
+  const flags=(R.red_flags||[]).map(f=>{
+    const bc=f.severity==='HIGH'?'#EF4444':f.severity==='MEDIUM'?'#F59E0B':'#10B981';
+    return `<div class="flag-item" style="border-color:${bc}">
+      <div class="flag-header">
+        <div class="flag-issue">${esc(f.issue)}</div>
+        <span class="sev-badge sev-${f.severity}">${esc(f.severity)}</span>
+      </div>
+      <div class="flag-fix">→ Fix: ${esc(f.fix)}</div>
+    </div>`;
+  }).join('');
+
+  const good=(R.positive_factors||[]).map(f=>`<div class="good-item"><span style="color:#10B981;flex-shrink:0;font-weight:700">✓</span>${esc(f)}</div>`).join('');
+  const miss=(R.missing_documents||[]).map(d=>`<div class="miss-item"><div class="miss-row"><span class="miss-icon" style="color:${d.priority==='MANDATORY'?'#EF4444':'#F59E0B'}">${d.priority==='MANDATORY'?'✗':'⚠'}</span><div><div style="font-size:12px;font-weight:700;color:#0B1F3A">${esc(d.document)}</div><div style="font-size:11px;color:#94A3B8;margin-top:1px">${esc(d.why)}</div></div></div></div>`).join('');
+  const tips=(R.embassy_tips||[]).map(t=>`<div class="tip-row"><span class="tip-arrow">→</span>${esc(t)}</div>`).join('');
+  const dbks=(R.deal_breakers||[]).map(d=>`<div class="tip-row"><span class="tip-x">✗</span>${esc(d)}</div>`).join('');
+  const docTabsHTML=DOC_TABS.map((t,i)=>`<button id="dtab-${i}" class="doc-tab-btn${i===0?' active':''}" onclick="genDoc(${i})">${t.label}</button>`).join('');
+
+  document.getElementById('screen-results').innerHTML=`
+  <div class="fade-up">
+    <div class="result-header">
+      <div><div style="font-size:18px;font-weight:700;color:#0B1F3A">Your Risk Report</div><div style="font-size:13px;color:#64748B;margin-top:2px">${esc(S.country?.name)} · ${esc(S.vtype)} Visa</div></div>
+      <button class="back-btn" onclick="goBack()">← New Analysis</button>
+    </div>
+
+    <div class="metric-row">
+      <div class="metric-card"><div class="metric-val">₹${fee}</div><div class="metric-label">Visa fee at risk</div></div>
+      <div class="metric-card"><div class="metric-val">₹${((S.country?.fee||0)*5).toLocaleString()}+</div><div class="metric-label">Est. total costs</div></div>
+      <div class="metric-card"><div class="metric-val" style="color:${pctCol}">${pct}%</div><div class="metric-label">Rejection risk</div></div>
+    </div>
+
+    <div class="risk-banner risk-${rk}">
+      <div style="flex:1">
+        <span class="risk-badge rbg-${rk}">${esc(rk)} RISK</span>
+        <div class="risk-verdict ${rk}">${esc(R.verdict)}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div class="risk-pct" style="color:${pctCol}">${pct}<span style="font-size:20px;opacity:.6">%</span></div>
+        <div class="risk-pct-label">REJECTION RISK</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Application Confidence Scores</div>
+      <div class="composite-row">
+        <div><div style="font-size:13px;font-weight:700;color:#0B1F3A">Overall Strength</div><div style="font-size:11px;color:#94A3B8;margin-top:2px">Composite of all 5 factors</div></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="bar-track"><div class="bar-fill" style="width:${comp}%;background:${scColor(comp)}"></div></div>
+          <div style="font-size:22px;font-weight:800;color:${scColor(comp)};min-width:46px">${comp}%</div>
+        </div>
+      </div>
+      <div class="score-grid">${scoreCards}</div>
+    </div>
+
+    ${flags?`<div class="card"><div class="card-label">Red Flags — ${(R.red_flags||[]).length} Issues Found</div>${flags}</div>`:''}
+
+    <div class="two-col">
+      ${good?`<div class="card" style="margin:0"><div class="card-label">In Your Favor</div>${good}</div>`:''}
+      ${miss?`<div class="card" style="margin:0"><div class="card-label">Missing Documents</div>${miss}</div>`:''}
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="card-label">Generated Documents — Ready to Use</div>
+      <div class="doc-tabs">${docTabsHTML}</div>
+      <div id="doc-content-area" class="doc-content-area"><div class="doc-center"><div style="width:28px;height:28px;border:2.5px solid #BFDBFE;border-top-color:#3B82F6;border-radius:50%;animation:spin .8s linear infinite"></div><div style="font-size:13px;color:#64748B">Writing your Cover Letter...</div></div></div>
+    </div>
+
+    ${tips||dbks?`<div class="card">
+      <div class="card-label">Embassy Intelligence — ${esc(S.country?.name)}</div>
+      ${tips?`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#1D4ED8;margin-bottom:8px">What This Embassy Looks For</div>${tips}</div>`:''}
+      ${dbks?`<div><div style="font-size:12px;font-weight:700;color:#DC2626;margin-bottom:8px">Known Deal Breakers</div>${dbks}</div>`:''}
+    </div>`:''}
+
+    <button class="section-end-btn" onclick="goBack()">← Analyze Another Application</button>
+    <div class="disclaimer">Not legal advice · For informational purposes only · Always consult a licensed immigration professional</div>
+  </div>`;
+}
+
+function selectCountry(code){
+  S.country=COUNTRIES.find(c=>c.code===code)||null;
+  renderCountries();
+}
+function selectVtype(v){S.vtype=v;renderVtypes()}
+function loadEx(i){
+  const ex=EXAMPLES[i];
+  S.country=COUNTRIES.find(c=>c.code===ex.country);
+  S.vtype=ex.vtype;
+  document.getElementById('details').value=ex.details;
+  document.getElementById('docs').value=ex.docs;
+  renderCountries();renderVtypes();hideErr();
+}
+
+function renderCountries(){
+  document.getElementById('country-grid').innerHTML=COUNTRIES.map(c=>`<button class="country-btn${S.country?.code===c.code?' active':''}" onclick="selectCountry('${c.code}')">
+    <div class="flag">${c.flag}</div>
+    <div class="cname">${esc(c.name)}</div>
+    <div class="cfee">₹${c.fee.toLocaleString()} fee</div>
+  </button>`).join('');
+}
+function renderVtypes(){
+  document.getElementById('vtype-pills').innerHTML=VTYPES.map(v=>`<button class="vtype-btn${S.vtype===v?' active':''}" onclick="selectVtype('${v}')">${esc(v)}</button>`).join('');
+}
+document.getElementById('ex-grid').innerHTML=EXAMPLES.map((ex,i)=>`<button class="ex-btn" onclick="loadEx(${i})">${esc(ex.label)}<div class="ex-sub">${esc(ex.sub)}</div></button>`).join('');
+
+renderCountries();renderVtypes();
+
+const saved=localStorage.getItem('vg_api_key');
+if(saved){
+  document.getElementById('api-key-input').value=saved;
+  document.getElementById('api-banner').className='card ok';
+  document.getElementById('api-banner-title').style.color='#065F46';
+  document.getElementById('api-banner-title').textContent='✓ API key loaded — ready to analyze!';
+}
+</script>
+</body>
+</html>
